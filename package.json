@@ -1,0 +1,8 @@
+{
+  "name": "orgo-jeopardy",
+  "version": "1.0.0",
+  "description": "Organic chemistry Jeopardy with phone buzzers",
+  "main": "server.js",
+  "scripts": { "start": "node server.js" },
+  "engines": { "node": ">=18" }
+}
