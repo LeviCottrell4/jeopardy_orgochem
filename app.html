@@ -1,0 +1,109 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Orgo Jeopardy</title>
+<style>
+:root{--bg:#0a0f3c;--tile:#1428a0;--tile2:#0c1a78;--gold:#ffcc33;--ok:#2fbf71;--bad:#e5484d;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+*{box-sizing:border-box}[hidden]{display:none!important}html,body{height:100%;margin:0}
+body{background:var(--bg);color:#fff;font-family:Impact,"Arial Narrow",Arial,sans-serif;display:flex;flex-direction:column}
+button{font:inherit;cursor:pointer;border:0;border-radius:8px;padding:10px 14px;background:var(--gold);color:#000}
+button.ok{background:var(--ok);color:#fff}button.no{background:var(--bad);color:#fff}button.g{background:#fff3;color:#fff}button:disabled{opacity:.4}
+.hx{fill:var(--tile);stroke:none}
+#bd{flex:1;display:grid;grid-template-columns:repeat(5,1fr);grid-template-rows:auto repeat(5,1fr);gap:6px;padding:8px;min-height:0}
+.hd{background:var(--tile2);text-align:center;padding:8px 4px;font-size:clamp(.7rem,1.8vw,1.4rem);display:flex;align-items:center;justify-content:center;text-shadow:2px 2px #000}
+.tl{background:var(--tile);color:var(--gold);display:flex;align-items:center;justify-content:center;font-size:clamp(1.2rem,4vw,3rem);text-shadow:3px 3px #000;border-radius:4px}.tl.dn{visibility:hidden}
+.pd{display:flex;gap:10px;padding:8px;background:#000}.pe{flex:1;background:var(--tile);border-radius:8px;padding:6px;text-align:center;position:relative;border:4px solid transparent}
+.pe img{width:100%;max-height:70px;object-fit:contain;background:#fff;border-radius:4px;display:block}.pe b{display:block;font-weight:400;font-size:1.4rem;padding:12px 0}
+.pe span{display:block;font-size:clamp(1.4rem,4vw,2.6rem)}.pe span.neg{color:var(--bad)}.pe em{position:absolute;top:4px;right:8px;color:var(--gold);font-style:normal;font-size:1.4rem}
+.pe.bz{border-color:var(--gold);background:#c9a200;animation:p .5s infinite alternate}.pe.lk{opacity:.45}
+@keyframes p{to{transform:scale(1.04)}}
+.ov{position:fixed;inset:0;background:var(--tile);display:flex;flex-direction:column;z-index:5}
+.main{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:16px;text-align:center;overflow:auto}
+.mh{color:var(--gold);font-size:clamp(1rem,2.4vw,1.6rem);letter-spacing:2px}
+.cl{font:700 clamp(1.3rem,3.4vw,2.6rem)/1.3 Georgia,serif;max-width:1000px;text-shadow:2px 2px #000a}
+.an{font:700 clamp(1.1rem,2.8vw,2.1rem) Georgia,serif;color:var(--gold);background:#0006;padding:10px 18px;border-radius:8px;max-width:1000px}
+.dd{font-size:clamp(2rem,8vw,5rem);color:var(--gold);animation:p 1s infinite alternate}
+.tb{width:min(600px,90%);height:24px;background:#0006;border-radius:12px;position:relative;overflow:hidden}.tb i{display:block;height:100%;background:var(--gold);width:0}.tb b{position:absolute;inset:0;color:#000;font-weight:400}
+.dr{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}.dr div{background:#0006;padding:6px;border-radius:8px}.dr img{width:min(280px,28vw);background:#fff;display:block;border-radius:4px}
+#ho,#pl{padding:12px;max-width:560px;margin:0 auto;width:100%;font-family:Arial,sans-serif;overflow:auto}
+#ho .cl,#pl .cl{font-size:1.05rem;text-align:left}#ho .an{font-size:1.05rem}
+.mg{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin:8px 0}.mg .hd{font-size:.6rem;padding:4px 1px}.mg button{padding:10px 0;background:var(--tile);color:var(--gold)}.mg button:disabled{visibility:hidden}
+.row{display:flex;gap:6px;align-items:center;margin:5px 0;flex-wrap:wrap}.row>span{flex:1;min-width:110px}
+.sc{display:flex;gap:6px}.sc div{flex:1;background:var(--tile);border-radius:8px;padding:6px;text-align:center}.sc b{display:block;font-size:1.3rem;font-weight:400}
+input[type=number],input[type=password]{font:inherit;padding:8px;width:130px;border-radius:6px;border:0}
+canvas{width:100%;background:#fff;border-radius:8px;touch-action:none;display:block}
+#bz{width:100%;height:46vh;font-size:3.4rem;background:#d62727;color:#fff;border-radius:18px;margin-top:12px;font-family:Impact,sans-serif}#bz:disabled{background:#555}
+.tn{font-size:1.4rem}.team{display:flex;gap:8px}.team button{flex:1;padding:22px 0;font-size:1.3rem}
+</style></head><body><div id="app"></div>
+<script>
+const P=location.pathname,role=P.startsWith("/host")?"host":P.startsWith("/play")?"play":"screen";
+let st=null,off=0,pin=sessionStorage.getItem("pin")||"",team=localStorage.getItem("team"),redraw=false,wv={},AC=null,lastEv=0,lastTick=-1,autoSent=0;
+team=team===null?null:+team;const app=document.getElementById("app"),$=s=>document.querySelector(s);
+const post=b=>fetch("/act",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({...b,pin})}).then(r=>r.json()).catch(()=>({ok:false}));
+const A=b=>post(b),money=n=>(n<0?"−":"")+"$"+Math.abs(n);
+// ---- sound (screen) ----
+function tone(f,d,t="sine",s=0,v=.15){if(!AC)return;const o=AC.createOscillator(),g=AC.createGain(),T=AC.currentTime+s;o.type=t;o.frequency.value=f;o.connect(g);g.connect(AC.destination);g.gain.setValueAtTime(v,T);g.gain.exponentialRampToValueAtTime(.001,T+d);o.start(T);o.stop(T+d)}
+const seq=(a,t="triangle")=>a.forEach((f,i)=>tone(f,.3,t,i*.13));
+function sfx(e){({buzz:()=>tone(880,.35,"square",0,.2),open:()=>tone(500,.15),dd:()=>seq([392,523,659,784,1047]),ok:()=>seq([660,880,1100]),no:()=>tone(120,.6,"sawtooth",0,.2),timer:()=>tone(600,.1),final:()=>seq([330,392,330,392,523],"square"),win:()=>seq([523,659,784,1047,784,1047,1319])})[e]?.()}
+// ---- shared pieces ----
+const peds=()=>'<div class="pd">'+[0,1,2].map(t=>`<div class="pe${st.buzz[0]===t?" bz":""}${st.lock.includes(t)?" lk":""}">${st.nv[t]?`<img src="/img/n${t}?v=${st.nv[t]}">`:`<b>Team ${t+1}</b>`}<span class="${st.sc[t]<0?"neg":""}">${money(st.sc[t])}</span>${st.buzz.includes(t)?`<em>#${st.buzz.indexOf(t)+1}</em>`:""}</div>`).join("")+"</div>";
+const tbar=()=>'<div class="tb"><i></i><b class="tn"></b></div>';
+function tick(){if(!st)return;const rem=st.timerEnd?Math.max(0,Math.ceil((st.timerEnd-(Date.now()+off))/1000)):null;
+document.querySelectorAll(".tn").forEach(e=>e.textContent=rem==null?"":rem);document.querySelectorAll(".tb i").forEach(e=>e.style.width=rem==null?"0":rem/Math.max(1,st.timerLen)*100+"%");
+if(role==="screen"&&rem!=null&&rem!==lastTick){lastTick=rem;if(rem>0&&rem<=5)tone(900,.08,"square");if(rem===0)tone(140,.9,"sawtooth",0,.2)}
+if(role==="play"&&rem===0&&st.fin&&st.fin.ph==="clue"&&autoSent!==st.timerEnd&&fpad&&fpad.dirty()){autoSent=st.timerEnd;submitAns()}}
+setInterval(tick,200);
+// ---- connect ----
+function connect(){const es=new EventSource("/events?pin="+encodeURIComponent(pin));es.onmessage=e=>{st=JSON.parse(e.data);off=st.now-Date.now();if(role==="screen"&&AC&&st.ev.id!==lastEv)sfx(st.ev.t);lastEv=st.ev.id;render();tick()}}
+// ---- screen ----
+function rs(){let h="";const c=st.cur,f=st.fin;
+if(st.round<2)h+='<div id="bd">'+st.cats.map(x=>`<div class="hd">${x}</div>`).join("")+[0,1,2,3,4].map(r=>st.cats.map((x,i)=>`<div class="tl${st.used[i][r]?" dn":""}">$${st.vals[r]}</div>`).join("")).join("")+"</div>"+peds();
+if(c)h+=`<div class="ov"><div class="main"><div class="mh">${c.cat} · $${c.v}${c.dd?" · DAILY DOUBLE":""}</div>`+(c.ph==="wager"?'<div class="dd">DAILY DOUBLE!</div>':`<div class="cl">${c.clue}</div>${c.ans?`<div class="an">${c.ans}</div>`:""}${tbar()}`)+"</div>"+peds()+"</div>";
+if(f){let m=`<div class="mh">FINAL JEOPARDY! · ${f.cat}</div>`;
+if(f.ph==="intro")m+=`<div class="dd">FINAL JEOPARDY!</div><div class="cl">Teams: enter your wagers on your phones.</div><div class="cl">${[0,1,2].map(t=>`Team ${t+1} ${f.w[t]==null?"…":"✓"}`).join(" · ")}</div>`;
+if(f.ph==="clue")m+=`<div class="cl">${f.clue}</div>${tbar()}<div class="cl">${[0,1,2].map(t=>`Team ${t+1} ${f.d[t]?"✓":"✏️"}`).join(" · ")}</div>`;
+if(f.ph==="rev"||f.ph==="end")m+=`<div class="an">${f.ans}</div><div class="dr">${[0,1,2].map(t=>`<div>${f.d[t]?`<img src="/img/d${t}?v=${f.dv[t]}">`:"(no drawing)"}<br>Wager ${money(f.w[t]||0)} ${f.m[t]==null?"":f.m[t]?"✓":"✗"}</div>`).join("")}</div>`;
+if(f.ph==="end"){const w=[0,1,2].sort((a,b)=>st.sc[b]-st.sc[a])[0];m+=`<div class="dd">🏆 Team ${w+1}!</div>`}
+h+=`<div class="ov"><div class="main">${m}</div>${peds()}</div>`}
+if(!AC)h+='<div class="ov" style="z-index:9;background:#000d"><div class="main"><button onclick="AC=new(window.AudioContext||window.webkitAudioContext)();tone(660,.2);render()">🔊 Tap to start the show</button></div></div>';
+app.innerHTML=h}
+// ---- host ----
+function rh(){if(!pin||!st.host){app.innerHTML='<div id="ho"><h2>Host login</h2><input type="password" id="pi" placeholder="PIN"> <button onclick="login()">Enter</button><p id="pe"></p></div>';return}
+const c=st.cur,f=st.fin;let h='<div id="ho"><div class="sc">'+[0,1,2].map(t=>`<div>Team ${t+1}<b>${money(st.sc[t])}</b><button class="g" onclick="A({a:'adj',t:${t},n:-100})">−</button> <button class="g" onclick="A({a:'adj',t:${t},n:100})">+</button></div>`).join("")+"</div>";
+const tm=(i)=>`<div class="row"><span>Team ${i+1}</span><button class="ok" onclick="A({a:'mark',t:${i},ok:1})">✓</button><button class="no" onclick="A({a:'mark',t:${i},ok:0})">✗</button></div>`;
+if(f){const o=f.ph;h+=`<h3>Final Jeopardy · ${o}</h3>`;
+if(o==="intro")h+=`<p>${[0,1,2].map(t=>`Team ${t+1}: ${f.w[t]==null?"waiting":money(f.w[t])}`).join("<br>")}</p><button onclick="A({a:'fclue'})">Show clue + start 75 s</button>`;
+if(o==="clue")h+=`<div class="cl">${f.clue}</div><div class="an">${f.ans}</div>${tbar()}<p>${[0,1,2].map(t=>`Team ${t+1}: ${f.d[t]?"submitted ✓":"drawing…"}`).join("<br>")}</p><button onclick="A({a:'frev'})">Show answers on screen</button>`;
+if(o==="rev")h+=`<div class="an">${f.ans}</div>`+[0,1,2].map(t=>`<div class="row"><span>Team ${t+1} · wager ${money(f.w[t]||0)}<br>${f.d[t]?`<img src="/img/d${t}?v=${f.dv[t]}&pin=${encodeURIComponent(pin)}" style="width:100%;background:#fff;border-radius:6px">`:"(no drawing)"}</span>${f.m[t]==null?`<button class="ok" onclick="A({a:'fm',t:${t},ok:1})">✓</button><button class="no" onclick="A({a:'fm',t:${t},ok:0})">✗</button>`:f.m[t]?"✓ right":"✗ wrong"}</div>`).join("")+`<button onclick="A({a:'fend'})">Final scores ▶</button>`;
+if(o==="end")h+='<button class="no" onclick="if(confirm(\'Reset the whole game?\'))A({a:\'reset\'})">New game</button>'}
+else if(!c){h+=`<div class="mg">${st.cats.map(x=>`<div class="hd">${x}</div>`).join("")}${[0,1,2,3,4].map(r=>st.cats.map((x,i)=>`<button ${st.used[i][r]?"disabled":""} onclick="A({a:'pick',c:${i},r:${r}})">${st.vals[r]}</button>`).join("")).join("")}</div><button onclick="A({a:'next'})">${st.round===0?"Next round ▶":"Final Jeopardy ▶"}</button> <button class="g" onclick="if(confirm('Reset the whole game?'))A({a:'reset'})">Reset</button>`}
+else if(c.ph==="wager"){h+=`<h3>Daily Double · ${c.cat}</h3><p>Pick the team and enter its wager.</p>${[0,1,2].map(t=>`<label><input type="radio" name="wt" value="${t}" ${wv.t==t?"checked":""} onchange="wv.t=${t}"> Team ${t+1} (${money(st.sc[t])})</label><br>`).join("")}<div class="row"><input type="number" id="wg" value="${wv.n||""}" placeholder="wager" oninput="wv.n=this.value"><button onclick="A({a:'dd',t:wv.t,n:wv.n})">Lock wager</button></div>`}
+else{h+=`<h3>${c.cat} · ${money(c.v)}</h3><div class="cl">${c.clue}</div><div class="an">${c.ans}</div>${tbar()}`;
+h+=c.ph==="done"?'<button onclick="A({a:\'close\'})">Back to board ▶</button>':(st.buzz.length?st.buzz.map((t,i)=>`<div class="row"><span>#${i+1} Team ${t+1} buzzed</span><button class="ok" onclick="A({a:'mark',t:${t},ok:1})">✓</button><button class="no" onclick="A({a:'mark',t:${t},ok:0})">✗</button></div>`).join(""):"<p>Waiting for a buzz…</p>")+`<details><summary>Mark a team manually</summary>${[0,1,2].filter(t=>c.team==null||c.team===t).map(tm).join("")}</details><div class="row"><button onclick="A({a:'timer',s:15})">⏱ 15 s</button><button onclick="A({a:'reveal'})">Show answer</button><button class="g" onclick="A({a:'rb'})">Clear buzzers</button><button class="g" onclick="A({a:'close'})">Close clue</button></div>`}
+app.innerHTML=h+"</div>"}
+async function login(){pin=$("#pi").value;const r=await post({a:"auth"});if(r.ok){sessionStorage.setItem("pin",pin);location.reload()}else{pin="";$("#pe").textContent="Wrong PIN"}}
+// ---- player ----
+let npad,fpad;
+function pad(cv,w,h){cv.width=w;cv.height=h;const x=cv.getContext("2d");x.lineWidth=3;x.lineCap="round";x.lineJoin="round";const wipe=()=>{x.fillStyle="#fff";x.fillRect(0,0,w,h);x.strokeStyle="#000"};wipe();let d=false,dirty=false;
+const pt=e=>{const r=cv.getBoundingClientRect();return[(e.clientX-r.left)*w/r.width,(e.clientY-r.top)*h/r.height]};
+cv.onpointerdown=e=>{d=true;dirty=true;cv.setPointerCapture(e.pointerId);const[a,b]=pt(e);x.beginPath();x.moveTo(a,b);x.lineTo(a+.1,b);x.stroke()};
+cv.onpointermove=e=>{if(!d)return;const[a,b]=pt(e);x.lineTo(a,b);x.stroke()};cv.onpointerup=cv.onpointercancel=()=>d=false;
+return{clear:()=>{wipe();dirty=false},img:()=>cv.toDataURL("image/png"),dirty:()=>dirty}}
+function initPlay(){app.innerHTML=`<div id="pl"><div id="pt"><h2>Pick your team</h2><div class="team">${[1,2,3].map(n=>`<button onclick="setTeam(${n-1})">Team ${n}</button>`).join("")}</div></div>
+<div id="pn" hidden><h2>Draw your name</h2><canvas id="nc"></canvas><div class="row"><button class="g" onclick="npad.clear()">Clear</button><button onclick="sendName()">Done ✓</button></div></div>
+<div id="pm" hidden><div class="mh" id="ps"></div><div id="pb"><button id="bz">BUZZ</button></div><div id="pf" hidden></div><p><a href="#" style="color:#fff8" onclick="redraw=true;render();return false">Redraw my name</a></p></div></div>`;
+npad=pad($("#nc"),300,110)}
+function setTeam(t){team=t;localStorage.setItem("team",t);render()}
+async function sendName(){if(!npad.dirty())return;const img=npad.img();localStorage.setItem("nimg",img);await post({a:"join",t:team,img});redraw=false;render()}
+function submitAns(){post({a:"fd",t:team,img:fpad.img()});$("#fs")&&($("#fs").textContent="Submitted ✓ (you can resend)")}
+function rp(){if(!$("#pl"))initPlay();const saved=localStorage.getItem("nimg");
+if(team!==null&&!st.nv[team]&&saved&&!redraw){post({a:"join",t:team,img:saved})}
+$("#pt").hidden=team!==null;const needName=team!==null&&(redraw||(!st.nv[team]&&!saved));$("#pn").hidden=!needName;$("#pm").hidden=team===null||needName;if(team===null||needName)return;
+const f=st.fin,c=st.cur,bz=$("#bz");$("#pb").hidden=!!f;$("#pf").hidden=!f;
+if(!f){const open=c&&c.ph==="clue"&&(c.team==null||c.team===team),lk=st.lock.includes(team),b=st.buzz.indexOf(team);
+bz.disabled=!open||lk||b>=0;bz.textContent=lk?"LOCKED OUT":b>=0?"BUZZED #"+(b+1):open?"BUZZ!":"WAIT";
+$("#ps").textContent=`Team ${team+1} · ${money(st.sc[team])}`;bz.onpointerdown=()=>{if(bz.disabled)return;navigator.vibrate&&navigator.vibrate(60);post({a:"buzz",t:team});bz.disabled=true;bz.textContent="SENT…"}}
+else{$("#ps").textContent=`Final Jeopardy · Team ${team+1} · ${money(st.sc[team])}`;const pf=$("#pf");
+if(f.ph==="intro"){if(!$("#fw")){pf.innerHTML=`<p>Wager up to ${money(Math.max(st.sc[team],0))}${st.sc[team]<=0?" (you can’t wager)":""}</p><div class="row"><input type="number" id="fw" min="0" placeholder="wager"><button onclick="post({a:'fw',t:team,n:$('#fw').value});$('#fm').textContent='Wager locked ✓'">Lock wager</button></div><p id="fm"></p>`}if(f.w[team]!=null&&f.w[team]!=="")$("#fm").textContent="Wager locked ✓"}
+else if(f.ph==="clue"){if(!$("#fc")){pf.innerHTML=`<div class="cl" style="margin:8px 0">${f.clue}</div><div class="tb"><i></i><b class="tn"></b></div><canvas id="fc"></canvas><div class="row"><button class="g" onclick="fpad.clear()">Clear</button><button onclick="submitAns()">Submit answer</button></div><p id="fs"></p>`;fpad=pad($("#fc"),320,260)}}
+else pf.innerHTML="<p>Look at the main screen.</p>"}}
+function render(){if(!st)return;({screen:rs,host:rh,play:rp})[role]()}
+if(role==="play")initPlay();connect();
+</script></body></html>
